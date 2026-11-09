@@ -320,6 +320,25 @@ details.info code{font-size:13px;background:var(--board);padding:1px 4px}
 .ref-fields select{padding:9px 10px;border:1px solid var(--ink);background:var(--surface);font-size:15px;font-weight:400}
 .ref-io{margin-top:-10px}
 .lb-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.lb-stage{display:flex;align-items:center;gap:12px;max-width:100%;min-height:0}
+.lb-nav{font:inherit;font-size:34px;line-height:1;width:48px;height:64px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);cursor:pointer;flex:none}
+.lb-nav:hover{background:#fff;color:#000}
+.lb-nav[hidden]{visibility:hidden;display:block}
+.lb-count{color:#fff;font-size:13px;opacity:.8;margin-top:4px}
+.lb-credit{color:#fff;font-size:12px;opacity:.7;margin-top:4px;text-align:center;max-width:70ch}
+.lb-credit:empty{display:none}
+.lightbox img{touch-action:pan-y}
+.ref-photos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%}
+.ref-photos:empty{display:none}
+.ref-ph{position:relative;border:1px solid var(--ink);background:var(--board)}
+.ref-ph img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+.ref-ph .cover{position:absolute;left:0;top:0;background:#000;color:#fff;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:3px 6px}
+.ref-ph .tools{display:flex;border-top:1px solid var(--ink)}
+.ref-ph .tools button{flex:1;font:inherit;font-size:14px;font-weight:700;padding:6px 0;background:var(--raised);border:0;border-left:1px solid var(--line);cursor:pointer;min-height:34px}
+.ref-ph .tools button:first-child{border-left:0}
+.ref-ph .tools button:disabled{opacity:.3;cursor:default}
+.ref .nph{position:absolute;right:8px;top:8px;background:#000;color:#fff;font-size:11px;font-weight:700;padding:3px 7px}
+@media (max-width:700px){ .lb-nav{width:38px;height:52px;font-size:28px} }
 .lb-acts .btn{background:#fff;color:#000;border-color:#fff}
 .lb-acts .btn.warn{background:transparent;color:#ff6b5e;border-color:#ff6b5e}
 .lb-ph{width:min(600px,80vw);aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;border:1px solid #fff;color:#fff;font-size:15px}
@@ -412,10 +431,10 @@ a.btn,label.btn{text-decoration:none;display:inline-block}
     </div>
     <form class="ref-form" id="ref-form" hidden>
       <div class="ref-drop">
-        <img id="ref-preview" alt="" hidden>
-        <label class="btn" for="ref-file">Elegir foto</label>
-        <input type="file" id="ref-file" accept="image/*" hidden>
-        <span class="status" id="ref-file-name">Sin foto</span>
+        <div class="ref-photos" id="ref-photos"></div>
+        <label class="btn" for="ref-file">Añadir fotos</label>
+        <input type="file" id="ref-file" accept="image/*" multiple hidden>
+        <span class="status" id="ref-file-name">Puedes elegir varias. La primera es la portada; ordénalas con las flechas.</span>
       </div>
       <div class="ref-fields">
         <label>Título<input type="text" id="ref-title" maxlength="120" required placeholder="Casa La Ricarda"></label>
@@ -423,6 +442,7 @@ a.btn,label.btn{text-decoration:none;display:inline-block}
         <label>Autor o autores<input type="text" id="ref-authors" maxlength="160" placeholder="Antoni Bonet Castellana"></label>
         <label>Categoría<select id="ref-cat"></select></label>
         <label>Principio generador<input type="text" id="ref-principle" maxlength="120" placeholder="Retícula ortogonal de 8,80 × 8,80 m"></label>
+        <label>Créditos de las fotos<input type="text" id="ref-credits" maxlength="200" placeholder="Fotos: nombre del fotógrafo. Fuente: revista o web"></label>
         <div class="row">
           <button class="btn primary" type="submit" id="ref-save">Guardar referencia</button>
           <button class="btn" type="button" id="ref-cancel">Cancelar</button>
@@ -434,7 +454,11 @@ a.btn,label.btn{text-decoration:none;display:inline-block}
 </section>
 
 <div class="lightbox" id="lightbox" hidden role="dialog" aria-modal="true" aria-label="Referencia ampliada">
-  <figure><img id="lb-img" alt=""><div class="lb-ph" id="lb-ph" hidden>Sin foto</div><figcaption id="lb-cap"></figcaption></figure>
+  <div class="lb-stage">
+    <button class="lb-nav" id="lb-prev" aria-label="Foto anterior">‹</button>
+    <figure><img id="lb-img" alt=""><div class="lb-ph" id="lb-ph" hidden>Sin foto</div><figcaption id="lb-cap"></figcaption><span class="lb-credit" id="lb-credit"></span><span class="lb-count" id="lb-count"></span></figure>
+    <button class="lb-nav" id="lb-next" aria-label="Foto siguiente">›</button>
+  </div>
   <div class="lb-acts"><button class="btn" id="lb-edit">Editar</button><button class="btn warn" id="lb-del">Borrar</button><button class="btn" id="lb-close">Cerrar</button></div>
 </div>
 
@@ -1964,7 +1988,7 @@ async function compressImage(file){
   }
   return out;
 }
-const REF_CATS_DEFAULT=[['matrices','Matrices geométricas'],['agregativos','Sistemas agregativos'],['mat','Mat-building'],['residenciales','Matrices residenciales contemporáneas'],['patios','Patios']];
+const REF_CATS_DEFAULT=[['matrices','Matrices y agregación'],['residenciales','Matrices residenciales contemporáneas'],['patios','Patios'],['aterrazado','Espacio aterrazado y topografía'],['fluido','Relación fluida interior-exterior'],['experimental','Exploraciones experimentales']];
 let REF_CATS=Object.fromEntries(REF_CATS_DEFAULT);
 const CAT_KEY='arquitectura-categorias';
 const escH=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -2038,78 +2062,126 @@ function renderRefs(){
     if(it.principio){ const pr=document.createElement('span'); pr.className='principle'; pr.textContent=it.principio; cap.appendChild(pr); }
     if(REF_CATS[it.categoria]){ const tg=document.createElement('span'); tg.className='tag'; tg.textContent=REF_CATS[it.categoria]; cap.appendChild(tg); }
     f.appendChild(cap);
+    if((it.nfotos||0)>1){ const nb=document.createElement('span'); nb.className='nph'; nb.textContent=it.nfotos+' fotos'; f.appendChild(nb); }
     f.addEventListener('click',()=>openLightbox(it));
     f.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openLightbox(it); } });
     box.appendChild(f);
   }
 }
-function openRefForm(it){
-  REF.editing=it||null; REF.image=it&&it.imagen||null;
+// ---- fotos de cada referencia: la portada va en la propia ficha y el resto en la colección «fotos» ----
+const isData=v=>typeof v==='string'&&v.startsWith('data:image/');
+async function getFotos(it){
+  const cover=isData(it.imagen)?[it.imagen]:[];
+  if(REF.shared){
+    try{ const snap=await REF.db.collection('fotos').where('ref','==',it.id).get();
+      const extra=snap.docs.map(d=>d.data()).filter(x=>x&&isData(x.imagen)).sort((a,b)=>(a.orden||0)-(b.orden||0)).map(x=>x.imagen);
+      return cover.concat(extra);
+    }catch(e){ return cover; }
+  }
+  return cover.concat((it.extras||[]).filter(isData));
+}
+async function saveExtras(id,extras){
+  if(REF.shared){
+    let old=[]; try{ old=(await REF.db.collection('fotos').where('ref','==',id).get()).docs.map(d=>d.id); }catch(e){}
+    for(let k=0;k<extras.length;k++) await REF.db.collection('fotos').doc(id+'_'+k).set({ref:id,orden:k,imagen:extras[k]});
+    for(const oid of old){ const k=parseInt(oid.split('_').pop(),10); if(!(k<extras.length)) await REF.db.collection('fotos').doc(oid).delete(); }
+  } else {
+    const i=REF.items.findIndex(x=>x.id===id); if(i>=0){ REF.items[i].extras=extras; refLocalSave(); }
+  }
+}
+function renderPhotoList(){
+  const box=$('#ref-photos'); box.textContent='';
+  REF.photos.forEach((src,i)=>{
+    const d=document.createElement('div'); d.className='ref-ph';
+    const im=document.createElement('img'); im.src=src; im.alt='Foto '+(i+1); d.appendChild(im);
+    if(i===0){ const c=document.createElement('span'); c.className='cover'; c.textContent='Portada'; d.appendChild(c); }
+    const t=document.createElement('div'); t.className='tools';
+    const mk=(txt,lab,fn,dis)=>{ const b=document.createElement('button'); b.type='button'; b.textContent=txt; b.setAttribute('aria-label',lab); b.disabled=!!dis; b.addEventListener('click',fn); t.appendChild(b); };
+    mk('←','Mover antes',()=>{ const a=REF.photos; [a[i-1],a[i]]=[a[i],a[i-1]]; renderPhotoList(); },i===0);
+    mk('→','Mover después',()=>{ const a=REF.photos; [a[i+1],a[i]]=[a[i],a[i+1]]; renderPhotoList(); },i===REF.photos.length-1);
+    mk('✕','Quitar foto',()=>{ REF.photos.splice(i,1); renderPhotoList(); });
+    d.appendChild(t); box.appendChild(d);
+  });
+  $('#ref-file-name').textContent=REF.photos.length?`${REF.photos.length} ${REF.photos.length>1?'fotos':'foto'}. La primera es la portada.`:'Puedes elegir varias. La primera es la portada; ordénalas con las flechas.';
+}
+async function openRefForm(it){
+  REF.editing=it||null; REF.photos=[];
   $('#ref-title').value=it?it.titulo||'':''; $('#ref-year').value=it?it.anio||'':''; $('#ref-authors').value=it?it.autores||'':'';
-  $('#ref-cat').value=it&&REF_CATS[it.categoria]?it.categoria:''; $('#ref-principle').value=it?it.principio||'':'';
-  const pv=$('#ref-preview'); if(REF.image){ pv.src=REF.image; pv.hidden=false; } else { pv.removeAttribute('src'); pv.hidden=true; }
-  $('#ref-file-name').textContent=REF.image?'Foto actual':'Sin foto';
+  $('#ref-cat').value=it&&REF_CATS[it.categoria]?it.categoria:''; $('#ref-principle').value=it?it.principio||'':''; $('#ref-credits').value=it?it.creditos||'':'';
   $('#ref-save').textContent=it?'Guardar cambios':'Guardar referencia';
   $('#ref-form').hidden=false; $('#ref-form').scrollIntoView({block:'nearest'}); $('#ref-title').focus();
+  renderPhotoList();
+  if(it){ $('#ref-file-name').textContent='Cargando fotos…'; REF.photos=await getFotos(it); if(REF.editing===it) renderPhotoList(); }
 }
-function closeRefForm(){ $('#ref-form').hidden=true; REF.editing=null; REF.image=null; $('#ref-file').value=''; }
+function closeRefForm(){ $('#ref-form').hidden=true; REF.editing=null; REF.photos=[]; $('#ref-file').value=''; $('#ref-photos').textContent=''; }
 $('#ref-add').addEventListener('click',()=>openRefForm(null));
 $('#ref-cancel').addEventListener('click',closeRefForm);
 $('#ref-sort').addEventListener('change',renderRefs);
 $('#ref-filter').addEventListener('change',renderRefs);
 $('#ref-file').addEventListener('change',async e=>{
-  const f=e.target.files[0]; if(!f) return;
-  if(!/^image\//.test(f.type)){ toast('Elige un archivo de imagen'); return; }
-  $('#ref-file-name').textContent='Preparando la foto…';
-  try{ REF.image=await compressImage(f); const pv=$('#ref-preview'); pv.src=REF.image; pv.hidden=false; $('#ref-file-name').textContent=f.name; }
-  catch(err){ REF.image=null; $('#ref-file-name').textContent='No se ha podido leer esa imagen'; }
+  const files=[...e.target.files].filter(f=>/^image\//.test(f.type)); e.target.value='';
+  if(!files.length){ toast('Elige archivos de imagen'); return; }
+  $('#ref-file-name').textContent='Preparando las fotos…';
+  for(const f of files){ try{ REF.photos.push(await compressImage(f)); }catch(err){} }
+  renderPhotoList();
 });
 async function writeRef(id,doc){
   if(REF.shared){ await REF.db.collection('referencias').doc(id).set(doc); return true; }
   const i=REF.items.findIndex(x=>x.id===id); const row=Object.assign({id},doc);
-  if(i>=0) REF.items[i]=row; else REF.items.push(row);
+  if(i>=0){ row.extras=REF.items[i].extras||[]; REF.items[i]=row; } else REF.items.push(row);
   if(!refLocalSave()){ if(i<0) REF.items.pop(); return false; }
   return true;
 }
 $('#ref-form').addEventListener('submit',async e=>{
   e.preventDefault();
   const titulo=$('#ref-title').value.trim(), anio=$('#ref-year').value.trim(), autores=$('#ref-authors').value.trim();
-  const categoria=$('#ref-cat').value, principio=$('#ref-principle').value.trim();
+  const categoria=$('#ref-cat').value, principio=$('#ref-principle').value.trim(), creditos=$('#ref-credits').value.trim();
   if(!titulo){ toast('Escribe al menos el título'); $('#ref-title').focus(); return; }
-  const prev=REF.editing, id=prev?prev.id:refId();
-  const doc={titulo,anio,autores,categoria,principio,imagen:REF.image||'',creado:prev&&prev.creado?prev.creado:Date.now(),autor:prev&&prev.autor!=null?prev.autor:(REF.uid||'')};
-  const btn=$('#ref-save'); btn.disabled=true;
+  const prev=REF.editing, id=prev?prev.id:refId(), photos=REF.photos.slice();
+  const doc={titulo,anio,autores,categoria,principio,creditos,imagen:photos[0]||'',nfotos:photos.length,creado:prev&&prev.creado?prev.creado:Date.now(),autor:prev&&prev.autor!=null?prev.autor:(REF.uid||'')};
+  const btn=$('#ref-save'); btn.disabled=true; $('#ref-file-name').textContent='Guardando…';
   try{
-    if(!(await writeRef(id,doc))){ toast('No queda espacio en este navegador. Usa fotos más pequeñas.'); btn.disabled=false; return; }
+    if(!(await writeRef(id,doc))){ toast('No queda espacio en este navegador. Usa menos fotos o más pequeñas.'); btn.disabled=false; return; }
+    await saveExtras(id,photos.slice(1));
     if(!REF.shared) renderRefs();
     toast(prev?'Referencia actualizada':'Referencia añadida'); closeRefForm();
   }catch(err){
     const c=err&&err.code;
-    toast(c==='invalid_argument'?'No tienes permiso para añadir referencias aquí. Pide acceso de colaborador.':c==='quota_exceeded'?'La galería está llena. Borra alguna referencia.':'No se ha podido guardar. Inténtalo de nuevo.');
+    toast(c==='invalid_argument'?'No tienes permiso para añadir referencias aquí. Pide acceso de colaborador.':c==='quota_exceeded'?'La galería está llena. Borra alguna referencia o foto.':'No se ha podido guardar. Inténtalo de nuevo.');
   }
   btn.disabled=false;
 });
 async function deleteRef(it){
   try{
-    if(REF.shared) await REF.db.collection('referencias').doc(it.id).delete();
+    if(REF.shared){ await saveExtras(it.id,[]); await REF.db.collection('referencias').doc(it.id).delete(); }
     else { REF.items=REF.items.filter(x=>x.id!==it.id); refLocalSave(); const g=store.get('arquitectura-referencias-borradas')||[]; g.push(it.id); store.set('arquitectura-referencias-borradas',g); renderRefs(); }
     toast('Referencia borrada');
   }catch(e){ toast('No se ha podido borrar'); }
 }
-let lbArmed=null;
-function openLightbox(it){
-  REF.current=it;
-  const okImg=typeof it.imagen==='string'&&it.imagen.startsWith('data:image/');
-  const im=$('#lb-img'); if(okImg){ im.src=it.imagen; im.alt=it.titulo||''; im.hidden=false; } else { im.removeAttribute('src'); im.hidden=true; }
-  $('#lb-ph').hidden=okImg;
+// ---- visor con carrusel ----
+let lbArmed=null; const LB={it:null,fotos:[],i:0,tok:0};
+function showLb(){
+  const f=LB.fotos, im=$('#lb-img'), n=f.length;
+  if(n){ im.src=f[LB.i]; im.hidden=false; $('#lb-ph').hidden=true; } else { im.removeAttribute('src'); im.hidden=true; $('#lb-ph').hidden=false; }
+  $('#lb-prev').hidden=$('#lb-next').hidden=n<2;
+  $('#lb-count').textContent=n>1?`${LB.i+1} / ${n}`:'';
+}
+function lbStep(d){ const n=LB.fotos.length; if(n<2) return; LB.i=(LB.i+d+n)%n; showLb(); }
+async function openLightbox(it){
+  REF.current=it; LB.it=it; LB.i=0; LB.fotos=isData(it.imagen)?[it.imagen]:[]; const tok=++LB.tok;
+  $('#lb-img').alt=it.titulo||'';
   $('#lb-cap').textContent=[it.titulo,[it.autores,it.anio].filter(Boolean).join(', '),it.principio,REF_CATS[it.categoria]].filter(Boolean).join('. ');
+  $('#lb-credit').textContent=it.creditos||'';
   const can=REF.canWrite&&refCanModify(it);
   $('#lb-edit').hidden=!can; $('#lb-del').hidden=!can;
   clearTimeout(lbArmed); lbArmed=null; $('#lb-del').textContent='Borrar';
-  $('#lightbox').hidden=false; $('#lb-close').focus();
+  showLb(); $('#lightbox').hidden=false; $('#lb-close').focus();
+  if((it.nfotos||0)>1||it.extras){ const all=await getFotos(it); if(tok===LB.tok){ LB.fotos=all; showLb(); } }
 }
-function closeLightbox(){ $('#lightbox').hidden=true; REF.current=null; }
+function closeLightbox(){ $('#lightbox').hidden=true; REF.current=null; LB.tok++; }
 $('#lb-close').addEventListener('click',closeLightbox);
+$('#lb-prev').addEventListener('click',e=>{ e.stopPropagation(); lbStep(-1); });
+$('#lb-next').addEventListener('click',e=>{ e.stopPropagation(); lbStep(1); });
 $('#lb-edit').addEventListener('click',()=>{ const it=REF.current; closeLightbox(); if(it) openRefForm(it); });
 $('#lb-del').addEventListener('click',()=>{
   const b=$('#lb-del');
@@ -2117,11 +2189,19 @@ $('#lb-del').addEventListener('click',()=>{
   clearTimeout(lbArmed); lbArmed=null; const it=REF.current; closeLightbox(); if(it) deleteRef(it);
 });
 $('#lightbox').addEventListener('click',e=>{ if(e.target.id==='lightbox') closeLightbox(); });
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!$('#lightbox').hidden) closeLightbox(); });
+document.addEventListener('keydown',e=>{ if($('#lightbox').hidden) return; if(e.key==='Escape') closeLightbox(); else if(e.key==='ArrowLeft') lbStep(-1); else if(e.key==='ArrowRight') lbStep(1); });
+{ let sx=null; const im=$('#lb-img');
+  im.addEventListener('pointerdown',e=>{ sx=e.clientX; });
+  im.addEventListener('pointerup',e=>{ if(sx==null) return; const dx=e.clientX-sx; sx=null; if(Math.abs(dx)>40) lbStep(dx<0?1:-1); });
+}
 $('#ref-export').addEventListener('click',()=>{
   if(!REF.items.length){ toast('No hay referencias que exportar'); return; }
-  const data=REF.items.map(({id,titulo,anio,autores,categoria,principio,imagen,creado})=>({id,titulo,anio,autores,categoria,principio,imagen,creado}));
-  saveFile('referencias.json',JSON.stringify({app:'arquitectura-es-jugar',tipo:'referencias',categorias:Object.entries(REF_CATS),items:data}));
+  (async()=>{
+    toast('Preparando el archivo con todas las fotos…');
+    const data=[];
+    for(const it of REF.items){ const f=await getFotos(it); data.push({id:it.id,titulo:it.titulo,anio:it.anio,autores:it.autores,categoria:it.categoria,principio:it.principio,creditos:it.creditos||'',imagen:f[0]||'',extras:f.slice(1),nfotos:f.length,creado:it.creado}); }
+    saveFile('referencias.json',JSON.stringify({app:'arquitectura-es-jugar',tipo:'referencias',categorias:Object.entries(REF_CATS),items:data}));
+  })();
 });
 $('#ref-import').addEventListener('change',e=>{
   const f=e.target.files[0]; if(!f) return; e.target.value='';
@@ -2138,10 +2218,13 @@ $('#ref-import').addEventListener('change',e=>{
       if(!it||typeof it.titulo!=='string'||!it.titulo.trim()){ skip++; continue; }
       if(have.has(key(it))){ skip++; continue; }
       const doc={titulo:it.titulo.trim().slice(0,120),anio:String(it.anio||'').slice(0,20),autores:String(it.autores||'').slice(0,160),
-        categoria:REF_CATS[it.categoria]?it.categoria:'',principio:String(it.principio||'').slice(0,120),
+        categoria:REF_CATS[it.categoria]?it.categoria:'',principio:String(it.principio||'').slice(0,120),creditos:String(it.creditos||'').slice(0,200),
         imagen:typeof it.imagen==='string'&&it.imagen.startsWith('data:image/')&&it.imagen.length<250000?it.imagen:'',
         creado:Number(it.creado)||Date.now(),autor:REF.uid||''};
-      try{ if(await writeRef(refId(),doc)){ n++; have.add(key(it)); } else { toast('No queda espacio en este navegador'); break; } }
+      const ex=Array.isArray(it.extras)?it.extras.filter(x=>isData(x)&&x.length<250000):[];
+      doc.nfotos=(doc.imagen?1:0)+ex.length;
+      const nid=refId();
+      try{ if(await writeRef(nid,doc)){ if(ex.length) await saveExtras(nid,ex); n++; have.add(key(it)); } else { toast('No queda espacio en este navegador'); break; } }
       catch(err){ toast('Se ha detenido la importación: '+((err&&err.code)==='invalid_argument'?'sin permiso.':'error al guardar.')); break; }
     }
     if(!REF.shared) renderRefs();
@@ -2160,8 +2243,10 @@ async function loadSeedFile(){
     const gone=new Set(store.get('arquitectura-referencias-borradas')||[]), pos=new Map(REF.items.map((x,i)=>[x.id,i])); let n=0;
     for(const it of list){
       if(!it||!it.id||typeof it.titulo!=='string'||gone.has(String(it.id))) continue;
-      const row={id:String(it.id),titulo:it.titulo,anio:String(it.anio||''),autores:String(it.autores||''),categoria:String(it.categoria||''),principio:String(it.principio||''),
-        imagen:typeof it.imagen==='string'&&it.imagen.startsWith('data:image/')?it.imagen:'',creado:Number(it.creado)||0,autor:''};
+      const row={id:String(it.id),titulo:it.titulo,anio:String(it.anio||''),autores:String(it.autores||''),categoria:String(it.categoria||''),principio:String(it.principio||''),creditos:String(it.creditos||''),
+        imagen:typeof it.imagen==='string'&&it.imagen.startsWith('data:image/')?it.imagen:'',creado:Number(it.creado)||0,autor:'',
+        extras:Array.isArray(it.extras)?it.extras.filter(x=>typeof x==='string'&&x.startsWith('data:image/')):[]};
+      row.nfotos=(row.imagen?1:0)+row.extras.length;
       if(pos.has(row.id)) REF.items[pos.get(row.id)]=row; else REF.items.push(row);
       n++;
     }
