@@ -2052,8 +2052,8 @@ function renderRefs(){
   }
   for(const it of items){
     const f=document.createElement('figure'); f.className='ref'; f.tabIndex=0; f.setAttribute('role','button'); f.setAttribute('aria-label','Abrir '+(it.titulo||'referencia'));
-    const okImg=typeof it.imagen==='string'&&it.imagen.startsWith('data:image/');
-    if(okImg){ const im=document.createElement('img'); im.src=it.imagen; im.alt=''; im.loading='lazy'; f.appendChild(im); }
+    const okImg=isImg(it.imagen);
+    if(okImg){ const im=document.createElement('img'); im.src=it.imagen; im.alt=''; im.loading='lazy'; im.decoding='async'; f.appendChild(im); }
     else { const ph=document.createElement('div'); ph.className='ph'; ph.setAttribute('aria-hidden','true'); f.appendChild(ph); }
     const cap=document.createElement('figcaption');
     const t=document.createElement('strong'); t.textContent=it.titulo||'Sin título'; cap.appendChild(t);
@@ -2070,15 +2070,17 @@ function renderRefs(){
 }
 // ---- fotos de cada referencia: la portada va en la propia ficha y el resto en la colección «fotos» ----
 const isData=v=>typeof v==='string'&&v.startsWith('data:image/');
+// en la copia de GitHub las fotos son archivos sueltos junto a index.html (p. ej. f-abc-0.jpg)
+function isImg(v){ return isData(v)||(typeof v==='string'&&/^[\w.-]+\.(jpe?g|png|webp|gif)$/i.test(v)); }
 async function getFotos(it){
-  const cover=isData(it.imagen)?[it.imagen]:[];
+  const cover=isImg(it.imagen)?[it.imagen]:[];
   if(REF.shared){
     try{ const snap=await REF.db.collection('fotos').where('ref','==',it.id).get();
       const extra=snap.docs.map(d=>d.data()).filter(x=>x&&isData(x.imagen)).sort((a,b)=>(a.orden||0)-(b.orden||0)).map(x=>x.imagen);
       return cover.concat(extra);
     }catch(e){ return cover; }
   }
-  return cover.concat((it.extras||[]).filter(isData));
+  return cover.concat((it.extras||[]).filter(isImg));
 }
 async function saveExtras(id,extras){
   if(REF.shared){
@@ -2168,7 +2170,7 @@ function showLb(){
 }
 function lbStep(d){ const n=LB.fotos.length; if(n<2) return; LB.i=(LB.i+d+n)%n; showLb(); }
 async function openLightbox(it){
-  REF.current=it; LB.it=it; LB.i=0; LB.fotos=isData(it.imagen)?[it.imagen]:[]; const tok=++LB.tok;
+  REF.current=it; LB.it=it; LB.i=0; LB.fotos=isImg(it.imagen)?[it.imagen]:[]; const tok=++LB.tok;
   $('#lb-img').alt=it.titulo||'';
   $('#lb-cap').textContent=[it.titulo,[it.autores,it.anio].filter(Boolean).join(', '),it.principio,REF_CATS[it.categoria]].filter(Boolean).join('. ');
   $('#lb-credit').textContent=it.creditos||'';
@@ -2247,8 +2249,8 @@ async function loadSeedFile(){
     for(const it of list){
       if(!it||!it.id||typeof it.titulo!=='string'||gone.has(String(it.id))) continue;
       const row={id:String(it.id),titulo:it.titulo,anio:String(it.anio||''),autores:String(it.autores||''),categoria:String(it.categoria||''),principio:String(it.principio||''),creditos:String(it.creditos||''),
-        imagen:typeof it.imagen==='string'&&it.imagen.startsWith('data:image/')?it.imagen:'',creado:Number(it.creado)||0,autor:'',
-        extras:Array.isArray(it.extras)?it.extras.filter(x=>typeof x==='string'&&x.startsWith('data:image/')):[]};
+        imagen:isImg(it.imagen)?it.imagen:'',creado:Number(it.creado)||0,autor:'',
+        extras:Array.isArray(it.extras)?it.extras.filter(isImg):[]};
       row.nfotos=(row.imagen?1:0)+row.extras.length;
       if(pos.has(row.id)) REF.items[pos.get(row.id)]=row; else REF.items.push(row);
       n++;
